@@ -16,6 +16,9 @@ If time and logisics allows, I am considering creating a new SDF scene that woul
 ![](StillLifeReference.jpg)
 
 
+![](StillLife2Reference.jpg)
+
+
 ### Specification:
 1) Depth of field rendering
     - Implement a simulated depth of field effect
