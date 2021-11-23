@@ -193,7 +193,7 @@ vec2 sceneSDF(vec3 queryPos)
     {
         // Add body
         vec3 bodyPos = rotateXYZ(queryPos, PI / 10.0,  PI / 4.0, 0.0);
-        matID = 4.0;
+        matID = 1.0;
         vec2 cube = vec2(sdfBox(bodyPos, vec3(0.5, 0.5, 0.5)), matID);
         closestPointDistance = unionSDF(cube, closestPointDistance);
         
@@ -308,7 +308,7 @@ vec2 sceneSDF(vec3 queryPos)
         antennaPos = rotateAboutZ(antennaPos, cos(u_Time * 0.4) / 10.0 + 0.1);
         antennaPos += vec3(0.0, 1.3, 0.4);
 
-        matID = 1.0;
+        matID = 4.0;
         vec2 antennaBall = vec2(sdfSphere(queryPos, antennaPos, 0.1), matID);
         closestPointDistance = unionSDF(antennaBall, closestPointDistance);
 
