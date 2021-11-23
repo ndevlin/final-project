@@ -1,5 +1,7 @@
 # Nathan Design Doc
 
+Live Demo: https://ndevlin.github.io/final-project/
+
 ### Introduction
 - I have been very interested in rendering ever since I started learning about computer graphics, but I haven't had the opportunity to learn as much about rendering as I would like! I really enjoyed our HW2 and HW3 assignments, and I would like to build on those to make a polished SDF scene. I will start with my HW3 project as a base. That will allow me to focus on adding new rendering techniques and not spend so much time creating shapes or simply getting something to show up on screen. I will be implementing this as a solo project.
 
