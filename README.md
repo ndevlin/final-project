@@ -1,6 +1,17 @@
 # Nathan Design Doc
 
-Live Demo: https://ndevlin.github.io/final-project/
+## Milestone #2:
+
+- Make progress on algorithms
+- Setting up the project was notably more time consuming than expected and getting things working properly took a solid chunk of time. Additionally going through the algorithms to understand them properly I think also took more time than expected.
+- With that being said, I believe I am now set up for success and will be able to move a lot quicker with later parts of the implementation.
+
+- Here is an example of one of my features, the ambient occlusion. It takes up a small amount of framerate, and is quite tunable to look very good and to meet the user's desires.
+
+![](AO_Example.png)
+
+
+## Design Specification:
 
 ### Introduction
 - I have been very interested in rendering ever since I started learning about computer graphics, but I haven't had the opportunity to learn as much about rendering as I would like! I really enjoyed our HW2 and HW3 assignments, and I would like to build on those to make a polished SDF scene. I will start with my HW3 project as a base. That will allow me to focus on adding new rendering techniques and not spend so much time creating shapes or simply getting something to show up on screen. I will be implementing this as a solo project.
