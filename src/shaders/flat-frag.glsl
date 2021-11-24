@@ -305,6 +305,19 @@ vec2 sceneSDF(vec3 queryPos)
 
         closestPointDistance = unionSDF(leftLegAndWheel, closestPointDistance);
 
+        // Left tire
+        matID = 2.0;
+        vec3 leftTirePos = rotateAboutY(queryPos - vec3(0.9, -0.7, -0.9), -PI / 4.0);
+        vec2 leftTire = vec2(sdfTorus(leftWheelPos, 0.18, 0.07), matID);
+        closestPointDistance = unionSDF(leftTire, closestPointDistance);
+
+
+        // Right tire
+        matID = 2.0;
+        vec3 rightTirePos = rotateAboutY(queryPos - vec3(-0.4, -1.8, -0.5), -PI / 4.0);
+        vec2 rightTire = vec2(sdfTorus(rightWheelPos, 0.18, 0.07), matID);
+        closestPointDistance = unionSDF(rightTire, closestPointDistance);
+
         // Add antenna ball
         vec3 antennaPos = vec3(0.0, 1.0, 0.0);
         antennaPos = rotateAboutX(antennaPos, cos(u_Time * 0.4) / 10.0 + 0.1);
@@ -574,11 +587,11 @@ vec3 getSceneColor(vec2 uv)
 
         // Compute shadow from light2
         shadowFactor = softShadow(intersection.position, normalize(LIGHT2_DIR), EPSILON * 1000.0, 100.0, 20.0);
-        //light2Intensity *= shadowFactor;
+        light2Intensity *= shadowFactor;
 
         // Compute shadow from light3
         shadowFactor = softShadow(intersection.position, normalize(LIGHT3_DIR), EPSILON * 1000.0, 100.0, 20.0);
-        //light3Intensity *= shadowFactor;
+        light3Intensity *= shadowFactor;
 
 
         light1_Color *= light1Intensity;
