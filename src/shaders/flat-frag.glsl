@@ -212,7 +212,7 @@ vec2 sceneSDF(vec3 queryPos)
 
 
         // Add face
-        matID = 4.0;
+        matID = 1.0;
         vec3 shiftedFace = queryPos - vec3(-0.13, 1.3, 0.6);
         shiftedFace = rotateAboutX(shiftedFace, PI / 2.0);
         // Make robot abruptly turn head to look at camera
