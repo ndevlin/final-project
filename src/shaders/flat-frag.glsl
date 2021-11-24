@@ -18,6 +18,8 @@ const float PI = 3.14159265359;
 
 const float AMBIENT = 0.05;
 
+const float FLOOR_HEIGHT = -2.1;
+
 const vec3 LIGHT1_DIR = vec3(-1.0, 1.0, 2.0);
 float light1_OutputIntensity = 0.9;
 vec3 light1_Color = vec3(1.0, 1.0, 1.0); // Full Daylight
@@ -176,6 +178,7 @@ float sdfTorus( vec3 point, float radius, float thickness)
 }
 
 
+
 // Describe the scene using sdf functions
 vec2 sceneSDF(vec3 queryPos) 
 {
@@ -185,7 +188,7 @@ vec2 sceneSDF(vec3 queryPos)
 
     // Add floor
     matID = 0.0;
-    vec2 floor = vec2(heightField(queryPos, -2.1), matID);
+    vec2 floor = vec2(heightField(queryPos, FLOOR_HEIGHT), matID);
     closestPointDistance = unionSDF(floor, closestPointDistance);
 
     // Bounding sphere to improve performance
@@ -436,14 +439,14 @@ float occlusionShadowFactor(vec3 point, vec3 normal, float k,
 }
 
 
-Intersection getRaymarchedIntersection(vec2 uv)
+Intersection rayMarch(Ray r)
 {
+
     Intersection intersection;    
     intersection.distance_t = -1.0;
     
     float distancet = 0.0f;
-    
-    Ray r = getRay(uv);
+
     for(int step; step < MAX_RAY_STEPS && distancet < maxRayDistance; ++step)
     {
         
@@ -468,9 +471,18 @@ Intersection getRaymarchedIntersection(vec2 uv)
         distancet += currentDistance;
         
     }
-    
+
     return intersection;
 }
+
+
+Intersection getRaymarchedIntersection(vec2 uv)
+{   
+    Ray r = getRay(uv);
+    
+    return rayMarch(r);
+}
+
 
 vec3 getSceneColor(vec2 uv)
 {
@@ -488,6 +500,27 @@ vec3 getSceneColor(vec2 uv)
 
         // diffuseColor = Albedo: below is the default value;
         vec3 diffuseColor = vec3(1.0, 0.8745, 0.5333);
+
+
+        if(intersection.material_id == 0)
+        {
+            diffuseColor = vec3(0.8, 0.8, 0.8);
+
+            Ray r;
+            r.direction = getRay(fs_Pos).direction;
+            r.direction.y *= -1.0;
+            r.origin = intersection.position + r.direction * EPSILON * 1000.0;
+
+            Intersection newIntersection = rayMarch(r);
+
+            if (newIntersection.distance_t > 0.0)
+            { 
+                intersection = newIntersection;
+            }
+
+            blinnPhong = true;
+        }
+
 
         if(intersection.material_id == 1)
         {
@@ -511,7 +544,6 @@ vec3 getSceneColor(vec2 uv)
             diffuseColor = vec3(1.0, 0.0, 0.0);
             blinnPhong = true;
         }
-
 
         // First Light
 
@@ -578,11 +610,11 @@ vec3 getSceneColor(vec2 uv)
 
         // Compute shadow from light2
         shadowFactor = softShadow(intersection.position, normalize(LIGHT2_DIR), EPSILON * 1000.0, 100.0, 20.0);
-        light2Intensity *= shadowFactor;
+        //light2Intensity *= shadowFactor;
 
         // Compute shadow from light3
         shadowFactor = softShadow(intersection.position, normalize(LIGHT3_DIR), EPSILON * 1000.0, 100.0, 20.0);
-        light3Intensity *= shadowFactor;
+        //light3Intensity *= shadowFactor;
 
 
         light1_Color *= light1Intensity;
