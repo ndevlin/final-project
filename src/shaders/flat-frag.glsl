@@ -32,6 +32,10 @@ const vec3 LIGHT3_DIR = vec3(-1.0, 1.0, -2.0);
 float light3_OutputIntensity = 0.8;
 vec3 light3_Color = vec3(0.996, 0.879, 0.804); // 5000 Kelvin Tungsten light
 
+
+// Light inside head
+const vec3 LIGHT4_POS = vec3(0.05, 1.2, 0.2);
+
 struct Ray 
 {
     vec3 origin;
@@ -201,9 +205,16 @@ vec2 sceneSDF(vec3 queryPos)
         closestPointDistance = unionSDF(cube, closestPointDistance);
         
         // Add head
-        matID = 3.0;
+        matID = 1.0;
         vec2 head = vec2(sdfSphere(queryPos, vec3(0.0, 1.3, 0.3), 0.6), matID);
         closestPointDistance = unionSDF(head, closestPointDistance);
+
+        // Add Eyes
+        matID = 5.0;
+        vec2 eyes = vec2(sdfSphere(queryPos, vec3(-0.025, 1.3, 0.36), 0.55), matID);
+        closestPointDistance = unionSDF(eyes, closestPointDistance);
+
+
 
         // Add neck
         matID = 1.0;
@@ -439,16 +450,28 @@ float occlusionShadowFactor(vec3 point, vec3 normal, float k,
 {
     float aoShadowing = 0.0;
 
-    float coeff = 0.5;
+    float coeff = 0.3333333;
 
     for(float i = 0.0; i < numSamples; i += 1.0)
     {
         aoShadowing += coeff * (i * sampleDist - sceneSDF(point + normal * i * sampleDist).x);
 
-        coeff /= 2.0;
+        coeff *= 0.666666;
     }
 
     return k * aoShadowing;
+}
+
+
+// Subsurface Scattering Approximation
+float subSurface(vec3 lightDir, vec3 normal, vec3 viewVec, float thickness, float distortion, 
+                    float glowAmount, float scaleFactor, float ssAmbient)
+{
+    vec3 scatteredLightDir = lightDir + normal * distortion;
+
+    float lightReachingCam = pow(clamp(dot(viewVec, -scatteredLightDir), 0.0, 1.0), glowAmount) * scaleFactor;
+
+    return thickness * (lightReachingCam + ssAmbient);
 }
 
 
@@ -623,7 +646,7 @@ vec3 getSceneColor(vec2 uv)
 
         if(intersection.material_id == 1)
         {
-            diffuseColor = vec3(0.8, 0.8, 0.8);
+            diffuseColor = vec3(0.7, 0.7, 0.7);
         }
 
         if(intersection.material_id == 2)
@@ -641,15 +664,49 @@ vec3 getSceneColor(vec2 uv)
             diffuseColor = vec3(1.0, 0.0, 0.0);
         }
 
+        // Translucent Material Surface Color
+        if(intersection.material_id == 5)
+        {
+            diffuseColor = vec3(0.85, 0.9, 0.9);
+        }
+
 
         // Combine different lights
         vec3 finalColor = diffuseColor * (light1_Color + light2_Color + light3_Color);
         finalColor = finalColor * (1.0 + AMBIENT);
 
+        // Add Ambient Occlusion
         float aoShadowing = occlusionShadowFactor(intersection.position, intersection.normal, 
-                                                    4.0, 5.0, 0.2);
+                                                    3.5, 5.0, 0.2);
 
         finalColor *= 1.0 - aoShadowing;
+
+        vec3 sssColor = vec3(0.0);
+
+        // Add SSS if applicable
+        if(intersection.material_id == 5)
+        {
+
+            float thickness = 1.0 - occlusionShadowFactor(intersection.position, 
+                                                            -intersection.normal, 
+                                                            4.0, 5.0, 0.1);
+
+            vec3 subSurfaceColor = vec3(1.0, 0.85, 0.75);
+
+            float subSurfaceLight = subSurface(LIGHT4_POS - intersection.position, 
+                                                intersection.normal, 
+                                                u_Eye - intersection.position, 
+                                                thickness, 
+                                                0.47, 10.0, 5.0, 0.15);
+
+            //subSurfaceLight = clamp(subSurfaceLight, 0.0, 1.0);
+
+            sssColor = subSurfaceColor * subSurfaceLight;
+        }
+
+        finalColor = finalColor + sssColor;
+
+
 
         return finalColor;
 
