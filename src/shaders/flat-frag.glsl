@@ -34,7 +34,7 @@ vec3 light3_Color = vec3(0.996, 0.879, 0.804); // 5000 Kelvin Tungsten light
 
 
 // Light inside head
-const vec3 LIGHT4_POS = vec3(0.05, 1.2, 0.2);
+const vec3 LIGHT4_POS = vec3(0.0, 1.2, 0.2);
 
 struct Ray 
 {
@@ -540,7 +540,8 @@ vec3 getSceneColor(vec2 uv)
 
         // Turn on blinnPhong for shiny objects
         if(intersection.material_id == 0 || intersection.material_id == 1 ||
-            intersection.material_id == 3 || intersection.material_id == 4)
+            intersection.material_id == 3 || intersection.material_id == 4
+            || intersection.material_id == 5)
         {
             blinnPhong = true;
         }
@@ -697,7 +698,7 @@ vec3 getSceneColor(vec2 uv)
                                                 intersection.normal, 
                                                 u_Eye - intersection.position, 
                                                 thickness, 
-                                                0.47, 10.0, 5.0, 0.15);
+                                                0.47, 1.0, 4.0, 0.01);
 
             //subSurfaceLight = clamp(subSurfaceLight, 0.0, 1.0);
 
