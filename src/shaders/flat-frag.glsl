@@ -5,6 +5,20 @@ uniform vec3 u_Eye, u_Ref, u_Up;
 uniform vec2 u_Dimensions;
 uniform float u_Time;
 
+uniform float u_AO;
+
+uniform vec4 u_LightPos;
+
+uniform vec4 u_LightColor;
+
+uniform vec4 u_RobotColor; // User input color for body
+
+uniform float u_Exposure;   // Inversely corresponds to F-Stop
+
+uniform float u_Aperture;
+
+uniform float u_SSSall;
+
 in vec2 fs_Pos;
 out vec4 out_Col;
 
@@ -20,7 +34,9 @@ const float AMBIENT = 0.05;
 
 const float FLOOR_HEIGHT = -2.1;
 
-const vec3 LIGHT1_DIR = vec3(-1.0, 1.0, 2.0);
+
+// Replaced by Light Dir input
+//const vec3 LIGHT1_DIR = vec3(-1.0, 1.0, 2.0);
 float light1_OutputIntensity = 0.9;
 vec3 light1_Color = vec3(1.0, 1.0, 1.0); // Full Daylight
 
@@ -311,7 +327,7 @@ vec2 sceneSDF(vec3 queryPos)
         float leftWheel = sdfTorus(leftWheelPos, 0.18, 0.07);
 
         // Smooth blend the lower leg and the foot/wheel
-        matID = 3.0;
+        matID = 1.0;
         vec2 leftLegAndWheel = vec2(smin(leftLowerLeg.x, leftWheel, 0.1), matID);
 
         closestPointDistance = unionSDF(leftLegAndWheel, closestPointDistance);
@@ -524,9 +540,7 @@ vec3 getSceneColor(vec2 uv)
 {
     Intersection intersection = getRaymarchedIntersection(uv);
     
-    // Note that I flipped the camera to be at (0, 0, 3) instead of (0, 0, -10)
-    // So that we are closer to the scene and so that positive blue normals face towards camera
-    //return 0.5 * (getRay(uv).direction + vec3(1.0, 1.0, 1.0));
+    light1_Color = vec3(u_LightColor);
 
     if (intersection.distance_t > 0.0)
     { 
@@ -539,16 +553,17 @@ vec3 getSceneColor(vec2 uv)
 
 
         // Turn on blinnPhong for shiny objects
-        if(intersection.material_id == 0 || intersection.material_id == 1 ||
+        if((intersection.material_id == 0 || intersection.material_id == 1 ||
             intersection.material_id == 3 || intersection.material_id == 4
             || intersection.material_id == 5)
+            && u_SSSall < 0.5)
         {
             blinnPhong = true;
         }
 
         // First Light
 
-        float diffuse1Term = dot(intersection.normal, normalize(LIGHT1_DIR));
+        float diffuse1Term = dot(intersection.normal, normalize(vec3(u_LightPos)));
         
         diffuse1Term = clamp(diffuse1Term, 0.0f, 1.0f);
 
@@ -557,7 +572,7 @@ vec3 getSceneColor(vec2 uv)
         if(blinnPhong)
         {
             vec3 viewVec = u_Eye - intersection.position;
-            vec3 posToLight = LIGHT1_DIR - intersection.position;
+            vec3 posToLight = vec3(u_LightPos) - intersection.position;
             vec3 H = (viewVec + posToLight) / (length(viewVec) + length(posToLight));
             float intensity = 1.0f;
             float sharpness = 5.0f;
@@ -605,7 +620,7 @@ vec3 getSceneColor(vec2 uv)
         }
 
         // Compute shadow from light1
-        float shadowFactor = hardShadow(intersection.position, normalize(LIGHT1_DIR), EPSILON * 1000.0, 100.0);
+        float shadowFactor = hardShadow(intersection.position, normalize(vec3(u_LightPos)), EPSILON * 1000.0, 100.0);
         light1Intensity *= shadowFactor;
 
 
@@ -647,7 +662,7 @@ vec3 getSceneColor(vec2 uv)
 
         if(intersection.material_id == 1)
         {
-            diffuseColor = vec3(0.7, 0.7, 0.7);
+            diffuseColor = vec3(u_RobotColor);
         }
 
         if(intersection.material_id == 2)
@@ -666,7 +681,7 @@ vec3 getSceneColor(vec2 uv)
         }
 
         // Translucent Material Surface Color
-        if(intersection.material_id == 5)
+        if(intersection.material_id == 5 || u_SSSall > 0.5)
         {
             diffuseColor = vec3(0.85, 0.9, 0.9);
         }
@@ -678,27 +693,54 @@ vec3 getSceneColor(vec2 uv)
 
         // Add Ambient Occlusion
         float aoShadowing = occlusionShadowFactor(intersection.position, intersection.normal, 
-                                                    3.5, 5.0, 0.2);
+                                                    u_AO, 5.0, 0.2);
 
         finalColor *= 1.0 - aoShadowing;
 
         vec3 sssColor = vec3(0.0);
 
         // Add SSS if applicable
-        if(intersection.material_id == 5)
+        if(intersection.material_id == 5 || u_SSSall > 0.5)
         {
-
-            float thickness = 1.0 - occlusionShadowFactor(intersection.position, 
-                                                            -intersection.normal, 
-                                                            4.0, 5.0, 0.1);
 
             vec3 subSurfaceColor = vec3(1.0, 0.85, 0.75);
 
-            float subSurfaceLight = subSurface(LIGHT4_POS - intersection.position, 
+            // Default values for SSS in head
+            float aoK = 4.0;
+            float numSamples = 5.0;
+            float sampleDist = 0.1;
+
+            vec3 sss_Light = LIGHT4_POS;
+            float distortion = 0.47;
+            float glowAmount = 1.0;
+            float scaleFactor = 4.0;
+            float sssAmbient = 0.01;
+
+            // Values for universal SSS
+            if(u_SSSall > 0.5)
+            {
+                sss_Light = vec3(u_LightPos);
+                distortion = 0.2;
+                glowAmount = 1.0;
+                scaleFactor = 0.5;
+                sssAmbient = 0.4;
+            }
+
+
+            float thickness = 1.0 - occlusionShadowFactor(intersection.position, 
+                                                            -intersection.normal, 
+                                                            aoK, 
+                                                            numSamples,
+                                                            sampleDist);
+
+            float subSurfaceLight = subSurface(sss_Light - intersection.position, 
                                                 intersection.normal, 
                                                 u_Eye - intersection.position, 
                                                 thickness, 
-                                                0.47, 1.0, 4.0, 0.01);
+                                                distortion, 
+                                                glowAmount, 
+                                                scaleFactor, 
+                                                sssAmbient);
 
             //subSurfaceLight = clamp(subSurfaceLight, 0.0, 1.0);
 
@@ -707,7 +749,14 @@ vec3 getSceneColor(vec2 uv)
 
         finalColor = finalColor + sssColor;
 
+        // Add exposure effects to final brightness
 
+        // Exposure based on F-Stop
+        float apertureExposurePercent = 1.0 / (u_Aperture * u_Aperture);
+
+        finalColor *= apertureExposurePercent;
+
+        finalColor *= u_Exposure * u_Exposure;
 
         return finalColor;
 
