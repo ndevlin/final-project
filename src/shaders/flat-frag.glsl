@@ -5,6 +5,8 @@ uniform vec3 u_Eye, u_Ref, u_Up;
 uniform vec2 u_Dimensions;
 uniform float u_Time;
 
+uniform float u_CurrTick;
+
 uniform float u_AO;
 
 uniform vec4 u_LightPos;
@@ -16,6 +18,10 @@ uniform vec4 u_RobotColor; // User input color for body
 uniform float u_Exposure;   // Inversely corresponds to F-Stop
 
 uniform float u_Aperture;
+
+uniform float u_FocusDistance;
+
+uniform float u_FocalLength;
 
 uniform float u_SSSall;
 
@@ -66,6 +72,13 @@ struct Intersection
     float distance_t;
     int material_id;
 };
+
+
+
+float getBias(float t, float biasAmount)
+{
+  return (t / ((((1.0 / biasAmount) - 2.0) * (1.0 - t)) + 1.0));
+}
 
 
 // Operation functions
@@ -246,7 +259,7 @@ vec2 sceneSDF(vec3 queryPos)
         vec3 shiftedFace = queryPos - vec3(-0.13, 1.3, 0.6);
         shiftedFace = rotateAboutX(shiftedFace, PI / 2.0);
         // Make robot abruptly turn head to look at camera
-        shiftedFace = rotateAboutZ(shiftedFace, PI / 5.0 - quaImpulse(2.0, clamp(sin(u_Time * 0.05), 0.0, 1.0)) / 2.0);
+        shiftedFace = rotateAboutZ(shiftedFace, PI / 5.0 - quaImpulse(2.0, clamp(sin(u_CurrTick * 0.05), 0.0, 1.0)) / 2.0);
 
         vec2 scubaMask = vec2(sdfRoundedCylinder(shiftedFace, 0.2, 0.1, 0.2), matID);
         float negMask = sdfRoundedCylinder(shiftedFace, 0.15, 0.05, 0.5);
@@ -347,8 +360,8 @@ vec2 sceneSDF(vec3 queryPos)
 
         // Add antenna ball
         vec3 antennaPos = vec3(0.0, 1.0, 0.0);
-        antennaPos = rotateAboutX(antennaPos, cos(u_Time * 0.4) / 10.0 + 0.1);
-        antennaPos = rotateAboutZ(antennaPos, cos(u_Time * 0.4) / 10.0 + 0.1);
+        antennaPos = rotateAboutX(antennaPos, cos(u_CurrTick * 0.4) / 10.0 + 0.1);
+        antennaPos = rotateAboutZ(antennaPos, cos(u_CurrTick * 0.4) / 10.0 + 0.1);
         antennaPos += vec3(0.0, 1.3, 0.4);
 
         matID = 1.0;
@@ -396,7 +409,10 @@ Ray getRay(vec2 uv)
     forward = normalize(forward);
     vec3 right = normalize(cross(forward, u_Up));
 
-    float tanAlpha = tan(FOV / 2.0);
+
+    float fov = FOV - ((u_FocalLength - 106.0) / 157.0);
+
+    float tanAlpha = tan(fov / 2.0);
     float aspectRatio = u_Dimensions.x / u_Dimensions.y;
 
     vec3 V = u_Up * len * tanAlpha;
@@ -536,7 +552,7 @@ Intersection getRaymarchedIntersection(vec2 uv)
 }
 
 
-vec3 getSceneColor(vec2 uv)
+vec4 getSceneColor(vec2 uv)
 {
     Intersection intersection = getRaymarchedIntersection(uv);
     
@@ -639,6 +655,9 @@ vec3 getSceneColor(vec2 uv)
 
         light3_Color *= light3Intensity;
 
+
+        // Set camera Z here to maintain proper behavior for reflective floor
+        float distAlongCamZ = intersection.distance_t;
 
 
         // Floor; reflective material
@@ -756,26 +775,30 @@ vec3 getSceneColor(vec2 uv)
 
         // Add exposure effects to final brightness
 
-        // Exposure based on F-Stop
-        float apertureExposurePercent = 1.0 / (u_Aperture * u_Aperture);
+        finalColor *= u_Exposure / 100.0;
 
-        finalColor *= apertureExposurePercent;
 
-        finalColor *= u_Exposure * u_Exposure;
+        float FOCAL_RANGE = 1.0;
 
-        return finalColor;
+        float dofZ = min(1.0, abs(distAlongCamZ - u_FocusDistance) / FOCAL_RANGE);
+
+        //dofZ = pow(dofZ, 0.5);
+
+
+        return vec4(finalColor, dofZ);
 
     }
-    return vec3(0.0);
+    return vec4(0.0, 0.0, 0.0, 1.0);
 }
 
 
 void main()
 {
-    // Time varying pixel color
-    vec3 col = getSceneColor(fs_Pos);
+    out_Col = vec4(0.0, 0.0, 0.0, 1.0);
 
-    // Output to screen
-    out_Col = vec4(col, 1.0);
+    // Store color to texture
+    // Alpha indicates distance from fragment to Eye
+    out_Col = getSceneColor(fs_Pos);
+
 }
 

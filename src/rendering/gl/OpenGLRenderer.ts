@@ -40,6 +40,7 @@ class OpenGLRenderer
     aoIn: number,
     aperture: number,
     exposure: number,
+    focusDistance: number,
     focalLength: number,
     SSS_All: number) 
   {
@@ -75,6 +76,12 @@ class OpenGLRenderer
     prog.setExposure(exposure);
 
     prog.setSSSall(SSS_All);
+
+    prog.setTexLocation();
+
+    prog.setFocusDistance(focusDistance);
+
+    prog.setFocalLength(focalLength);
 
     for (let drawable of drawables) 
     {
